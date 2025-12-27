@@ -55,7 +55,10 @@ void Handler::send_response(http::status status, const std::string& body, const 
 void Handler::help(const http::request<http::string_body>& req) {
     json::object h;
     h["service"] = "RickAndMorty Middleware";
-    json::array cmds{"help", "character/<id>", "character/all", "exit"};
+    json::array cmds{"help", 
+        "character/all", "character/id", "character/?key=value", "character/id1,id2",
+        "location/all", "location/id", "location/?key=value", "location/id1,id2",
+        "episode/all", "episode/id", "episode/?key=value", "episode/id1,id2"};
     h["commands"] = cmds;
     send_response(http::status::ok, json::serialize(h), req);
 }
