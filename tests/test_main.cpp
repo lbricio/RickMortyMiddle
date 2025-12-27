@@ -12,7 +12,7 @@
 #include <boost/url.hpp>
 #include <sstream>
 
-#include "session.hpp"
+#include "handler.hpp"
 #include "models.hpp"
 #include "utils.hpp"
 #include "api.hpp"

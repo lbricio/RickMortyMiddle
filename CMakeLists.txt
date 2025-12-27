@@ -17,7 +17,8 @@ add_executable(app
     src/http_client.cpp
     src/api.cpp
     src/utils.cpp
-	src/session.cpp
+	src/handler.cpp
+	src/router.cpp
 )
 
 target_include_directories(app PRIVATE
@@ -46,7 +47,8 @@ add_executable(tests
     src/utils.cpp
     src/api.cpp
     src/http_client.cpp
-    src/session.cpp
+	src/handler.cpp
+	src/router.cpp
 	src/http_client.cpp
 )
 

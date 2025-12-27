@@ -11,7 +11,7 @@
 #include <iostream>
 #include <boost/beast.hpp>
 #include <boost/asio.hpp>
-#include "session.hpp"
+#include "handler.hpp"
 #include "api.hpp"
 #include "http_client.hpp"
 
@@ -25,14 +25,14 @@ int main() {
     net::io_context ioc;
     net::ip::tcp::acceptor acceptor{ioc, {net::ip::tcp::v4(), 8080}};
 
-    std::cout << "Middleware start at port 8080\n";
+    std::cout << "Middleware started at port 8080\n";
 
     while (true) {
         auto socket = acceptor.accept();
         beast::tcp_stream stream(std::move(socket));
 
-        Session session(stream, api);
-        session.handle();
+        Handler middleware(stream, api);
+        middleware.handle();
     }
 
     return 0;

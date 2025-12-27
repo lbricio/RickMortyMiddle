@@ -1,9 +1,9 @@
-#include "session.hpp"
 #include <algorithm>
 #include <thread>
 #include <chrono>
 #include <sstream>
 
+#include "handler.hpp"
 #include "api.hpp"
 #include "utils.hpp"
 
@@ -23,10 +23,28 @@ auto with_retry(F&& f, int retries = 3) {
     throw std::runtime_error("retry failed");
 }
 
-Session::Session(beast::tcp_stream& stream, RickAndMortyApi& api)
+Handler::Handler(beast::tcp_stream& stream, RickAndMortyApi& api)
     : stream_(stream), api_(api) {}
 
-void Session::send_response(http::status status, const std::string& body, const http::request<http::string_body>& req) {
+void Handler::handle() {
+    try {
+        beast::flat_buffer buffer;
+        http::request<http::string_body> req;
+        http::read(stream_, buffer, req);
+
+        std::string path(req.target());
+        route_request(path, req);
+    }
+    catch(std::exception const& e) {
+        json::object err{{"error", e.what()}};
+        http::response<http::string_body> res{http::status::bad_request, 11};
+        res.set(http::field::content_type, "application/json");
+        res.body() = json::serialize(err);
+        http::write(stream_, res);
+    }
+} 
+
+void Handler::send_response(http::status status, const std::string& body, const http::request<http::string_body>& req) {
     http::response<http::string_body> res{status, req.version()};
     res.set(http::field::content_type, "application/json");
     res.body() = body;
@@ -34,7 +52,7 @@ void Session::send_response(http::status status, const std::string& body, const 
     http::write(stream_, res);
 }
 
-void Session::help(const http::request<http::string_body>& req) {
+void Handler::help(const http::request<http::string_body>& req) {
     json::object h;
     h["service"] = "RickAndMorty Middleware";
     json::array cmds{"help", "character/<id>", "character/all", "exit"};
@@ -42,7 +60,7 @@ void Session::help(const http::request<http::string_body>& req) {
     send_response(http::status::ok, json::serialize(h), req);
 }
 
-void Session::character_all(const http::request<http::string_body>& req) {
+void Handler::character_all(const http::request<http::string_body>& req) {
     auto list = with_retry([&]{ return api_.get_all_characters_basic(); });
 
     json::array arr;
@@ -56,7 +74,7 @@ void Session::character_all(const http::request<http::string_body>& req) {
     send_response(http::status::ok, json::serialize(out), req);
 }
 
-void Session::character_single(int id, const http::request<http::string_body>& req) {
+void Handler::character_single(int id, const http::request<http::string_body>& req) {
     auto c = with_retry([&]{ return api_.get_character(id); });
 
     json::object o;
@@ -77,7 +95,7 @@ void Session::character_single(int id, const http::request<http::string_body>& r
     send_response(http::status::ok, json::serialize(o), req);
 }
 
-void Session::character_batch(const std::string& id_part, const http::request<http::string_body>& req) {
+void Handler::character_batch(const std::string& id_part, const http::request<http::string_body>& req) {
     for (char ch : id_part) {
         if (!::isdigit(ch) && ch != ',') {
             send_response(http::status::bad_request,
@@ -106,7 +124,7 @@ void Session::character_batch(const std::string& id_part, const http::request<ht
     send_response(http::status::ok, json::serialize(out), req);
 }
 
-void Session::character_query(const http::request<http::string_body>& req) {
+void Handler::character_query(const http::request<http::string_body>& req) {
     try {
         auto body = with_retry([&]{
             return api_.route_query(std::string(req.target()));
@@ -120,7 +138,7 @@ void Session::character_query(const http::request<http::string_body>& req) {
     }
 }
 
-void Session::location_all(const http::request<http::string_body>& req) {
+void Handler::location_all(const http::request<http::string_body>& req) {
     const std::string host = "rickandmortyapi.com";
     const std::string target = "/api/location";
 
@@ -129,7 +147,7 @@ void Session::location_all(const http::request<http::string_body>& req) {
     send_response(http::status::ok, body, req);
 }
 
-void Session::location_single(int id, const http::request<http::string_body>& req) {
+void Handler::location_single(int id, const http::request<http::string_body>& req) {
     const std::string host = "rickandmortyapi.com";
     const std::string target = "/api/location/" + std::to_string(id);
 
@@ -138,7 +156,7 @@ void Session::location_single(int id, const http::request<http::string_body>& re
     send_response(http::status::ok, body, req);
 }
 
-void Session::location_batch(const std::string& id_part, const http::request<http::string_body>& req) {
+void Handler::location_batch(const std::string& id_part, const http::request<http::string_body>& req) {
     for (char ch : id_part) {
         if (!::isdigit(ch) && ch != ',') {
             send_response(http::status::bad_request,
@@ -165,7 +183,7 @@ void Session::location_batch(const std::string& id_part, const http::request<htt
     send_response(http::status::ok, body, req);
 }
 
-void Session::location_query(const http::request<http::string_body>& req) {
+void Handler::location_query(const http::request<http::string_body>& req) {
     try {
         const std::string upstream = "/api/location";
         const std::string full_target = std::string(req.target());
@@ -182,17 +200,17 @@ void Session::location_query(const http::request<http::string_body>& req) {
     }
 }
 
-void Session::episode_all(const http::request<http::string_body>& req) {
+void Handler::episode_all(const http::request<http::string_body>& req) {
     auto body = with_retry([&]{ return api_.get_episode_all(); });
     send_response(http::status::ok, body, req);
 }
 
-void Session::episode_single(int id, const http::request<http::string_body>& req) {
+void Handler::episode_single(int id, const http::request<http::string_body>& req) {
     auto body = with_retry([&]{ return api_.get_episode_single(id); });
     send_response(http::status::ok, body, req);
 }
 
-void Session::episode_batch(const std::string& id_part, const http::request<http::string_body>& req) {
+void Handler::episode_batch(const std::string& id_part, const http::request<http::string_body>& req) {
     for (char ch : id_part) {
         if (!::isdigit(ch) && ch != ',') {
             send_response(http::status::bad_request,
@@ -205,7 +223,7 @@ void Session::episode_batch(const std::string& id_part, const http::request<http
     send_response(http::status::ok, body, req);
 }
 
-void Session::episode_query(const http::request<http::string_body>& req) {
+void Handler::episode_query(const http::request<http::string_body>& req) {
     try {
         auto body = with_retry([&]{ 
             return api_.get_episode_query(std::string(req.target()).substr(8));
@@ -218,105 +236,3 @@ void Session::episode_query(const http::request<http::string_body>& req) {
     }
 }
 
-void Session::route_request(const std::string& path, const http::request<http::string_body>& req) {
-    if (path == "/help") {
-        help(req);
-        return;
-    }
-
-    if (path.starts_with("/character/all")) {
-        character_all(req);
-        return;
-    }
-
-	if (path.starts_with("/character/?")) {
-		std::string forward_target = "/api/character/?" + path.substr(12);
-		auto body = with_retry([&]{ return api_.route_query(forward_target); });
-		send_response(http::status::ok, body, req);
-		return;
-	}
-
-    if (path.starts_with("/character/")) {
-        std::string id_part = path.substr(strlen("/character/"));
-
-        if (std::all_of(id_part.begin(), id_part.end(), ::isdigit)) {
-            character_single(std::stoi(id_part), req);
-            return;
-        }
-
-        if (id_part.find(',') != std::string::npos) {
-            character_batch(id_part, req);
-            return;
-        }
-    }
-
-	if (path.starts_with("/location/all")) {
-		location_all(req);
-		return;
-	}
-
-	if (path.starts_with("/location/?")) {
-		std::string forward_target = "/api/location/?" + path.substr(10);
-		auto body = with_retry([&]{ return api_.route_query(forward_target); });
-		send_response(http::status::ok, body, req);
-		return;
-	}
-
-	if (path.starts_with("/location/")) {
-		std::string id_part = path.substr(strlen("/location/"));
-
-		if (std::all_of(id_part.begin(), id_part.end(), ::isdigit)) {
-			location_single(std::stoi(id_part), req);
-			return;
-		}
-
-		if (id_part.find(',') != std::string::npos) {
-			location_batch(id_part, req);
-			return;
-		}
-	}
-
-	if (path.starts_with("/episode/all")) {
-		episode_all(req);
-		return;
-	}
-
-	if (path.starts_with("/episode/?")) {
-		episode_query(req);
-		return;
-	}
-
-	if (path.starts_with("/episode/")) {
-		std::string id_part = path.substr(9);
-
-		if (std::all_of(id_part.begin(), id_part.end(), ::isdigit)) {
-			episode_single(std::stoi(id_part), req);
-			return;
-		}
-
-		if (id_part.find(',') != std::string::npos) {
-			episode_batch(id_part, req);
-			return;
-		}
-	}
-	
-    send_response(http::status::not_found, R"({"error":"route not found"})", req);
-}
-
-void Session::handle() {
-    try {
-        beast::flat_buffer buffer;
-        http::request<http::string_body> req;
-        http::read(stream_, buffer, req);
-
-        std::string path(req.target());
-        route_request(path, req);
-    }
-    catch(std::exception const& e) {
-        json::object err{{"error", e.what()}};
-        http::response<http::string_body> res{http::status::bad_request, 11};
-        res.set(http::field::content_type, "application/json");
-        res.body() = json::serialize(err);
-        http::write(stream_, res);
-    }
-} 

@@ -9,9 +9,9 @@
 namespace beast = boost::beast;
 namespace http  = beast::http;
 
-class Session {
+class Handler {
 public:
-    Session(beast::tcp_stream& stream, RickAndMortyApi& api);
+    Handler(beast::tcp_stream& stream, RickAndMortyApi& api);
     void handle();
 
 private:
@@ -33,10 +33,8 @@ private:
     void episode_batch(const std::string& id_part, const http::request<http::string_body>& req);
     void episode_query(const http::request<http::string_body>& req);
 	
-
     void route_request(const std::string& path, const http::request<http::string_body>& req);
-    void send_response(http::status status, const std::string& body,
-                       const http::request<http::string_body>& req);
+    void send_response(http::status status, const std::string& body, const http::request<http::string_body>& req);
 
     beast::tcp_stream& stream_;
     RickAndMortyApi& api_;
