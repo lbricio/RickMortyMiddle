@@ -1,19 +1,26 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "http_client.hpp"
+#include <unordered_map>
+#include <boost/json.hpp>
 
-struct Episode {
-    std::string name;
-    std::string episode;
-    std::string air_date;
-    std::vector<std::string> characters;
-};
+#include "http_client.hpp"
+#include "utils.hpp"
+#include "models.hpp"
 
 class RickAndMortyApi {
 public:
     explicit RickAndMortyApi(HttpClient& client);
     Episode get_episode(int id);
+    Character get_character(int id);
+    bool has_character_cached(int id) const;
+    std::vector<Character> get_characters_page(int page);
+    std::vector<std::pair<int, std::string>> get_all_characters_basic();
+    std::vector<Character> get_all_characters();
+    std::vector<Character> get_characters_by_ids(const std::vector<int>& ids);
+    
 private:
+    Character parse_character(const boost::json::object& obj);
     HttpClient& client_;
+    std::unordered_map<int, Character> character_cache_;
 };
