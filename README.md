@@ -1,15 +1,30 @@
 # Welcome to RickMortyMiddleware
-> Essa aplicaçao é um middleware que consome a API [rickandmortyapi](https://rickandmortyapi.com/documentation/#get-multiple-characters) 
-> A aplicaçao possui uma camada de cache local que armazena personagens, locais e episodios em modelos locais evitando overload excessivo na API consumida.
-> 
-### Endpoints:  
-`GET /character/all`  retorna todos os personsagens em um unico json  
-`GET /character/<id>` retorna um personagem especifico pelo id  
-`GET /character/<id>,<id>` retorna varios personagens especificados  
-`GET /character/<?query>` retorna personagens que cumprem o filtro especificado
+> Essa aplicação é um middleware que consome a API [rickandmortyapi](https://rickandmortyapi.com/documentation/#get-multiple-characters).
+> A aplicaçao também possui uma camada de cache local que armazena personagens, locais e episodios em modelos locais evitando overload excessivo na API consumida. Utiliza Conan como gerenciador de pacotes, CMake para automatizar o build, C++ como linguagem e Boost(Asio, Beast, JSON) como frameworks principais e Google Test para testes automatizados, além disso o projeto aplica boas práticas de divisão de responsabilidades e modularização de código.
+
+### Endpoints:
+`GET /help` visualiza todos os endpoints disponíveis
+  
+`GET /character/all`       retorna todos os personsagens em um único json;  
+`GET /character/<id>`      retorna um personagem especifico pelo id;  
+`GET /character/<id>,<id>` retorna varios personagens especificados por id;  
+`GET /character/<?query>`  retorna personagens que cumprem o filtro especificado;  
+  
+`GET /episode/all`         retorna todos os episódios em um único json;  
+`GET /episode/<id>`        retorna um episódio específico pelo id;  
+`GET /episode/<id>,<id>`   retorna varios episódios por id;  
+`GET /episode/<?query>`    retorna episódios a partir do filtro especificado; 
+  
+`GET /location/all`       retorna todas as localizações em um único json;  
+`GET /location/<id>`      retorna uma localização especificada pelo id;  
+`GET /location/<id>,<id>` retorna varias localizações especificadas por id;  
+`GET /location/<?query>`  retorna localizações a partir do filtro especificado;  
+
+
+
 
 ### Stack:
-| Tecnologia                          | Função no projeto                                 |
+| Tecnologia                          |  Descrição                                        |
 | ----------------------------------- | ------------------------------------------------- |
 | **C++20**                           | Linguagem principal do desafio                    |
 | **Boost/Asio**                      | Networking (HTTP/HTTPS client + server)           |
@@ -81,18 +96,18 @@ cmake -S . -B build/Release \
 cmake --build build/Release
 ```
 
-4. Ao final, o binário app será gerado em:
+4. Executar o Middleware
 ```
 ./build/Release/app
 ```
-
-5. Executar o Middleware
-```
-./build/Release/app
-```
-
+  
 ---
-
+  
+API
+  
+---
+  
+Decisões técnicas
 
 
 
