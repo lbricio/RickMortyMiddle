@@ -109,6 +109,87 @@ void Session::character_batch(const std::string& id_part,
     send_response(http::status::ok, json::serialize(out), req);
 }
 
+void Session::character_query(const http::request<http::string_body>& req) {
+    try {
+        auto body = with_retry([&]{
+            return api_.route_query(std::string(req.target()));
+        });
+
+        send_response(http::status::ok, body, req);
+    }
+    catch (std::exception const& e) {
+        json::object err{{"error", e.what()}};
+        send_response(http::status::bad_request, json::serialize(err), req);
+    }
+}
+
+void Session::location_all(const http::request<http::string_body>& req) {
+    const std::string host = "rickandmortyapi.com";
+    const std::string target = "/api/location";
+
+    auto body = with_retry([&]{ return api_.route_query(target); });
+
+    send_response(http::status::ok, body, req);
+}
+
+void Session::location_single(int id, const http::request<http::string_body>& req) {
+    const std::string host = "rickandmortyapi.com";
+    const std::string target = "/api/location/" + std::to_string(id);
+
+    auto body = with_retry([&]{ return api_.route_query(target); });
+
+    send_response(http::status::ok, body, req);
+}
+
+void Session::location_batch(const std::string& id_part, const http::request<http::string_body>& req) {
+    // Validação igual ao character_batch
+    for (char ch : id_part) {
+        if (!::isdigit(ch) && ch != ',') {
+            send_response(http::status::bad_request,
+                          R"({"error":"IDs must be numeric and comma-separated"})", req);
+            return;
+        }
+    }
+
+    // Reutiliza o mesmo estilo de split do character_batch
+    std::vector<int> ids;
+    std::stringstream ss(id_part);
+    std::string tok;
+    while (std::getline(ss, tok, ',')) {
+        if (!tok.empty())
+            ids.push_back(std::stoi(tok));
+    }
+
+    const std::string host = "rickandmortyapi.com";
+    const std::string upstream = "/api/location/";
+
+    // Monta chamada upstream igual ao character batch
+    std::string forward_target = upstream + id_part;
+
+    auto body = with_retry([&]{ return api_.route_query(forward_target); });
+
+    send_response(http::status::ok, body, req);
+}
+
+void Session::location_query(const http::request<http::string_body>& req) {
+    try {
+        const std::string upstream = "/api/location";
+        const std::string full_target = std::string(req.target());
+
+        // Repassa a query mantendo prefixo upstream
+        std::string forward_target = upstream + full_target;
+
+        auto body = with_retry([&]{ return api_.route_query(forward_target); });
+
+        send_response(http::status::ok, body, req);
+    }
+    catch (std::exception const& e) {
+        json::object err{{"error", e.what()}};
+        send_response(http::status::bad_request, json::serialize(err), req);
+    }
+}
+
+
 void Session::route_request(const std::string& path,
                            const http::request<http::string_body>& req) {
     if (path == "/help") {
@@ -120,6 +201,13 @@ void Session::route_request(const std::string& path,
         character_all(req);
         return;
     }
+
+	if (path.starts_with("/character/?")) {
+		std::string forward_target = "/api/character/?" + path.substr(12);
+		auto body = with_retry([&]{ return api_.route_query(forward_target); });
+		send_response(http::status::ok, body, req);
+		return;
+	}
 
     if (path.starts_with("/character/")) {
         std::string id_part = path.substr(strlen("/character/"));
@@ -134,6 +222,32 @@ void Session::route_request(const std::string& path,
             return;
         }
     }
+
+	if (path.starts_with("/location/all")) {
+		location_all(req);
+		return;
+	}
+
+	if (path.starts_with("/location/?")) {
+		std::string forward_target = "/api/location/?" + path.substr(10);
+		auto body = with_retry([&]{ return api_.route_query(forward_target); });
+		send_response(http::status::ok, body, req);
+		return;
+	}
+
+	if (path.starts_with("/location/")) {
+		std::string id_part = path.substr(strlen("/location/"));
+
+		if (std::all_of(id_part.begin(), id_part.end(), ::isdigit)) {
+			location_single(std::stoi(id_part), req);
+			return;
+		}
+
+		if (id_part.find(',') != std::string::npos) {
+			location_batch(id_part, req);
+			return;
+		}
+	}
 
     send_response(http::status::not_found, R"({"error":"route not found"})", req);
 }

@@ -15,17 +15,21 @@ public:
     void handle();
 
 private:
-    void route_request(const std::string& path,
-                       const http::request<http::string_body>& req);
 
     void help(const http::request<http::string_body>& req);
+
     void character_all(const http::request<http::string_body>& req);
     void character_single(int id, const http::request<http::string_body>& req);
-    void character_batch(const std::string& id_part,
-                         const http::request<http::string_body>& req);
+    void character_batch(const std::string& id_part, const http::request<http::string_body>& req);
+	void character_query(const http::request<http::string_body>& req);
+	
+    void location_all(const http::request<http::string_body>& req);
+    void location_single(int id, const http::request<http::string_body>& req);
+    void location_batch(const std::string& id_part, const http::request<http::string_body>& req);
+    void location_query(const http::request<http::string_body>& req);
 
-    void send_response(http::status status,
-                       const std::string& body,
+    void route_request(const std::string& path, const http::request<http::string_body>& req);
+    void send_response(http::status status, const std::string& body,
                        const http::request<http::string_body>& req);
 
     beast::tcp_stream& stream_;

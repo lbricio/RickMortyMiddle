@@ -98,3 +98,61 @@ TEST(EndpointTest, CharacterBatch) {
         (ids[0] == 183 && ids[1] == 1)
     );
 }
+
+TEST(EndpointTest, LocationAll) {
+    net::io_context ioc;
+    HttpClient client(false);
+    RickAndMortyApi api(client);
+
+    beast::tcp_stream stream{ioc};
+    std::string raw_req = "GET /location/all HTTP/1.1\r\nHost: localhost\r\n\r\n";
+
+    auto body = do_request(stream, raw_req);
+    auto obj  = json::parse(body).as_object();
+
+    EXPECT_TRUE(obj.contains("results") || obj.contains("locations") || obj.contains("info"));
+}
+
+TEST(EndpointTest, LocationSingle) {
+    net::io_context ioc;
+    HttpClient client(false);
+    RickAndMortyApi api(client);
+
+    beast::tcp_stream stream{ioc};
+    std::string raw_req = "GET /location/3 HTTP/1.1\r\nHost: localhost\r\n\r\n";
+
+    auto body = do_request(stream, raw_req);
+    auto obj  = json::parse(body).as_object();
+
+    EXPECT_TRUE(obj.contains("id") || obj.contains("name"));
+}
+
+TEST(EndpointTest, LocationQueryProxy) {
+    net::io_context ioc;
+    HttpClient client(false);
+    RickAndMortyApi api(client);
+
+    beast::tcp_stream stream{ioc};
+    std::string raw_req = "GET /location/?dimension=C-137 HTTP/1.1\r\nHost: localhost\r\n\r\n";
+
+    auto body = do_request(stream, raw_req);
+    auto obj  = json::parse(body).as_object();
+
+    EXPECT_FALSE(body.empty());
+}
+
+TEST(EndpointTest, LocationBatch) {
+    net::io_context ioc;
+    HttpClient client(false);
+    RickAndMortyApi api(client);
+
+    beast::tcp_stream stream{ioc};
+    std::string raw_req = "GET /location/1,20 HTTP/1.1\r\nHost: localhost\r\n\r\n";
+
+    auto body = do_request(stream, raw_req);
+    auto obj  = json::parse(body).as_object();
+
+    // Validação básica igual aos outros testes: apenas garantir que veio algo útil do upstream
+    EXPECT_FALSE(body.empty());
+    EXPECT_TRUE(obj.contains("info") || obj.contains("results") || obj.contains("locations"));
+}

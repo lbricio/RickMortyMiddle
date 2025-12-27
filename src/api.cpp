@@ -170,3 +170,8 @@ std::vector<Character> RickAndMortyApi::get_characters_by_ids(const std::vector<
     }
     return out;
 }
+
+std::string RickAndMortyApi::route_query(const std::string& target) {
+    const std::string host = "rickandmortyapi.com";
+    return client_.get(host, target);
+}

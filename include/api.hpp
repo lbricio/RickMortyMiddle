@@ -14,6 +14,7 @@ public:
     Episode get_episode(int id);
     Character get_character(int id);
     bool has_character_cached(int id) const;
+    std::string route_query(const std::string& target);
     std::vector<Character> get_characters_page(int page);
     std::vector<std::pair<int, std::string>> get_all_characters_basic();
     std::vector<Character> get_all_characters();
